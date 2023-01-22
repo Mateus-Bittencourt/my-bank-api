@@ -1,0 +1,8 @@
+{
+  "nextId": 4,
+  "accounts": [
+    { "id": 1, "name": "Marina Bittencourt", "balance": 2000 },
+    { "id": 2, "name": "Mateus Bittencourt", "balance": 2000 },
+    { "id": 3, "name": "Miriam Bittencourt", "balance": 20000 }
+  ]
+}
