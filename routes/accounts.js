@@ -64,7 +64,44 @@ router.delete("/:id", async (req, res) => {
 
     res.statusCode = 204;
     res.end();
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+});
 
+router.put("/", async (req, res) => {
+  try {
+    const data = JSON.parse(await readFile(global.fileName));
+    const index = data.accounts.findIndex(
+      (account) => account.id === req.body.id
+    );
+    if (index === -1) {
+      res.statusCode = 404;
+      res.send({ message: "Account not found" });
+    }
+    data.accounts[index] = req.body;
+    await writeFile(global.fileName, JSON.stringify(data, null, 2));
+    res.statusCode = 204;
+    res.end();
+  } catch (error) {
+    res.status(400).send({ error: error.message });
+  }
+});
+
+router.patch("/updateBalance", async (req, res) => {
+  try {
+    const data = JSON.parse(await readFile(global.fileName));
+    const index = data.accounts.findIndex(
+      (account) => account.id === req.body.id
+    );
+    if (index === -1) {
+      res.statusCode = 404;
+      res.send({ message: "Account not found" });
+    }
+    data.accounts[index].balance = req.body.balance;
+    await writeFile(global.fileName, JSON.stringify(data, null, 2));
+    res.statusCode = 204;
+    res.end();
   } catch (error) {
     res.status(400).send({ error: error.message });
   }
