@@ -1,5 +1,6 @@
 import express from "express";
 import { promises as fs } from "fs";
+import cors from "cors";
 
 const { readFile, writeFile } = fs;
 
@@ -8,9 +9,14 @@ const router = express.Router();
 router.post("/", async (req, res, next) => {
   try {
     let account = req.body;
+
+    if (!account.name || account.balance == null) {
+      throw new Error("Name and Balance are required");
+    }
+
     const data = JSON.parse(await readFile(global.fileName));
 
-    account = { id: data.nextId, ...account };
+    account = { id: data.nextId, name: account.name, balance: account.balance };
     account.id = data.nextId;
     data.nextId++;
     data.accounts.push(account);
@@ -38,7 +44,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.get("/:id", async (req, res, next) => {
+router.get("/:id",  async (req, res, next) => {
   try {
     const data = JSON.parse(await readFile(global.fileName));
     const account = data.accounts.find(
@@ -77,18 +83,22 @@ router.delete("/:id", async (req, res, next) => {
 
 router.put("/", async (req, res, next) => {
   try {
-    const data = JSON.parse(await readFile(global.fileName));
-    const index = data.accounts.findIndex(
-      (account) => account.id === req.body.id
-    );
-    if (index === -1) {
-      res.statusCode = 404;
-      res.send({ message: "Account not found" });
+    const account = req.body;
+
+    if (!account.id || !account.name || account.balance == null) {
+      throw new Error("Id, Name and Balance are required");
     }
-    data.accounts[index] = req.body;
+
+    const data = JSON.parse(await readFile(global.fileName));
+    const index = data.accounts.findIndex((a) => a.id === account.id);
+    if (index === -1) {
+      // res.statusCode = 404;
+      throw new Error("Account not found");
+    }
+    data.accounts[index].name = account.name;
+    data.accounts[index].balance = account.balance;
     await writeFile(global.fileName, JSON.stringify(data, null, 2));
-    res.statusCode = 204;
-    res.end();
+    res.send(account);
 
     logger.info(`PUT /account - ${JSON.stringify(req.body)}`);
   } catch (error) {
@@ -98,29 +108,32 @@ router.put("/", async (req, res, next) => {
 
 router.patch("/updateBalance", async (req, res, next) => {
   try {
-    const data = JSON.parse(await readFile(global.fileName));
-    const index = data.accounts.findIndex(
-      (account) => account.id === req.body.id
-    );
-    if (index === -1) {
-      res.statusCode = 404;
-      res.send({ message: "Account not found" });
-    }
-    data.accounts[index].balance = req.body.balance;
-    await writeFile(global.fileName, JSON.stringify(data, null, 2));
-    res.statusCode = 204;
-    res.end();
+    const account = req.body;
 
-    logger.info(`PATCH /account/updateBalance - ${JSON.stringify(req.body)}`);
+    if (!account.id || account.balance == null) {
+      throw new Error("Id and Balance are required");
+    }
+
+    const data = JSON.parse(await readFile(global.fileName));
+    const index = data.accounts.findIndex((a) => a.id === account.id);
+    if (index === -1) {
+      // res.statusCode = 404;
+      throw new Error("Account not found");
+    }
+    data.accounts[index].balance = account.balance;
+    await writeFile(global.fileName, JSON.stringify(data, null, 2));
+    res.send(data.accounts[index]);
+
+    logger.info(`PATCH /account/updateBalance - ${JSON.stringify(account)}`);
   } catch (error) {
     next(error);
   }
 });
 
 router.use((err, req, res, next) => {
-  logger.error(`${req.method} ${req.baseUrl} - ${err.message}`	)
+  logger.error(`${req.method} ${req.baseUrl} - ${err.message}`);
   console.log(err);
-  res.status(500).send({ error: err.message });
+  res.status(400).send({ error: err.message });
 });
 
 export default router;
