@@ -3,10 +3,11 @@ import winston from "winston";
 import accountsRouter from "./routes/accounts.routes.js";
 import { promises as fs } from "fs";
 import cors from "cors";
-import { buildSchema } from "graphql";
+// import { buildSchema } from "graphql";
 import { graphqlHTTP } from "express-graphql";
 import AccountService from "./services/account.service.js";
 import Schema from "./schema/index.js";
+import basicAuth from "express-basic-auth";
 
 const { readFile, writeFile } = fs;
 
@@ -59,7 +60,49 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 app.use(express.static("public"));
-app.use("/account", accountsRouter);
+
+const getRole = (user) => {
+  if (user === "admin") {
+    return "admin";
+  } else if(user ==="mateus"){
+    return "role1";
+  }
+  // return "user";
+};
+
+const authorize = (...allowed) => {
+
+  const isAllowed = role => allowed.indexOf(role) > -1;
+
+  return (req, res, next) => {
+    if(req.auth.user){
+      const role = getRole(req.auth.user);
+
+      if (isAllowed(role)) {
+        next();
+      } else {
+        res.status(401).json({ message: "Unauthorized user" });
+      }
+    } else {
+      res.status(403).json({ message: "Forbidden" });
+    }
+  };
+};
+
+app.use(
+  basicAuth({
+    authorizer: (user, password) => {
+      const userMatchers = basicAuth.safeCompare(user, "admin");
+      const passwordMatchers = basicAuth.safeCompare(password, "1234");
+
+      const userMatchers2 = basicAuth.safeCompare(user, "mateus");
+      const passwordMatchers2 = basicAuth.safeCompare(password, "1234");
+
+      return userMatchers & passwordMatchers || userMatchers2 & passwordMatchers2;
+    },
+  })
+);
+app.use("/account", authorize('admin'),accountsRouter);
 
 app.use(
   "/graphql",
